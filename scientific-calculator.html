@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Meridian Mk.VII — Scientific Calculator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/12.4.2/math.min.js"></script>
+<style>
+  :root{
+    --graphite-1:#25272c;
+    --graphite-2:#1a1c20;
+    --graphite-3:#151619;
+    --case-border:#0c0d0f;
+    --key-num-a:#3a3e45;
+    --key-num-b:#2e3238;
+    --key-fn-a:#2b2e34;
+    --key-fn-b:#232529;
+    --key-op-a:#2f2b23;
+    --key-op-b:#26221c;
+    --key-mem-a:#22242a;
+    --key-mem-b:#1c1e23;
+    --util-a:#8a4433;
+    --util-b:#6f3628;
+    --brass-a:#d9b158;
+    --brass-b:#b8903f;
+    --brass-text:#c9a24d;
+    --text-num:#eeece4;
+    --text-fn:#c9c5b8;
+    --text-op:#d9b46a;
+    --text-util:#f3e3dc;
+    --text-mem:#8b93a1;
+    --display-a:#e4ead9;
+    --display-b:#d3dbc7;
+  }
+
+  *{ box-sizing:border-box; }
+
+  body{
+    margin:0;
+    min-height:100vh;
+    background:#101114;
+    display:flex;
+    justify-content:center;
+    align-items:flex-start;
+    padding:20px 12px;
+    font-family:'Space Grotesk', ui-sans-serif, sans-serif;
+  }
+
+  .mv7-body{
+    width:100%;
+    max-width:380px;
+    border-radius:26px;
+    padding:18px 16px 22px;
+    background:linear-gradient(160deg,var(--graphite-1) 0%, var(--graphite-2) 60%, var(--graphite-3) 100%);
+    box-shadow:0 20px 50px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.05);
+    border:1px solid var(--case-border);
+    position:relative;
+  }
+
+  .rivet{
+    position:absolute;
+    width:6px;
+    height:6px;
+    border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, #6b6f78, #1c1d20 70%);
+    box-shadow:0 1px 1px rgba(0,0,0,0.6);
+  }
+  .rivet.tl{ top:10px; left:10px; }
+  .rivet.tr{ top:10px; right:10px; }
+  .rivet.bl{ bottom:10px; left:10px; }
+  .rivet.br{ bottom:10px; right:10px; }
+
+  .mv7-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:2px 4px 14px;
+  }
+
+  .brand-title{
+    color:var(--brass-text);
+    font-size:11px;
+    font-weight:600;
+    letter-spacing:0.18em;
+  }
+  .brand-sub{
+    color:#5c6069;
+    font-size:8.5px;
+    font-weight:500;
+    letter-spacing:0.14em;
+    margin-top:1px;
+  }
+
+  .header-right{
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+
+  .inv-badge{
+    font-size:9px;
+    font-weight:700;
+    letter-spacing:0.08em;
+    color:#565a62;
+    background:transparent;
+    border:1px solid #3a3d43;
+    border-radius:5px;
+    padding:3px 6px;
+    cursor:pointer;
+    transition:background 0.15s ease, color 0.15s ease, border 0.15s ease;
+  }
+  .inv-badge.active{
+    color:#191a1c;
+    background:var(--brass-text);
+    border:none;
+  }
+
+  .angle-switch{
+    width:52px;
+    height:22px;
+    border-radius:11px;
+    background:#101114;
+    border:1px solid #34373d;
+    display:flex;
+    align-items:center;
+    padding:2px;
+    cursor:pointer;
+    box-shadow:inset 0 1px 3px rgba(0,0,0,0.6);
+  }
+  .angle-knob{
+    width:24px;
+    height:18px;
+    border-radius:9px;
+    background:linear-gradient(180deg,var(--brass-a),var(--brass-b));
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:8px;
+    font-weight:700;
+    color:#211a0d;
+    transition:transform 0.15s ease;
+    transform:translateX(0);
+  }
+  .angle-knob.rad{ transform:translateX(24px); }
+
+  .display{
+    background:linear-gradient(175deg,var(--display-a),var(--display-b));
+    border-radius:14px;
+    padding:14px 16px 12px;
+    min-height:92px;
+    box-shadow:inset 0 2px 6px rgba(0,0,0,0.35), inset 0 0 0 1px rgba(0,0,0,0.15);
+    display:flex;
+    flex-direction:column;
+    justify-content:flex-end;
+    gap:4px;
+    margin-bottom:16px;
+  }
+  .display.shake{ animation:mv7shake 0.3s; }
+  @keyframes mv7shake{
+    0%,100%{ transform:translateX(0); }
+    25%{ transform:translateX(-4px); }
+    75%{ transform:translateX(4px); }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .display.shake{ animation:none; }
+  }
+
+  .history-line{
+    font-size:11px;
+    color:#5a6350;
+    font-family:'JetBrains Mono', monospace;
+    min-height:14px;
+    letter-spacing:0.3px;
+    text-align:right;
+  }
+
+  .main-line{
+    overflow-x:auto;
+    white-space:nowrap;
+    font-family:'JetBrains Mono', monospace;
+    font-size:24px;
+    font-weight:600;
+    color:#1c2417;
+    text-align:right;
+    scrollbar-width:none;
+  }
+  .main-line.result{ font-size:30px; }
+  .main-line::-webkit-scrollbar{ display:none; }
+
+  .preview-line{
+    font-size:13px;
+    color:#6b7460;
+    font-family:'JetBrains Mono', monospace;
+    text-align:right;
+    min-height:16px;
+  }
+
+  .keypad{
+    display:grid;
+    grid-template-columns:repeat(6, 1fr);
+    gap:7px;
+  }
+
+  .key{
+    height:44px;
+    border-radius:10px;
+    font-family:'JetBrains Mono', ui-monospace, monospace;
+    font-size:15px;
+    font-weight:600;
+    border:1px solid rgba(0,0,0,0.35);
+    cursor:pointer;
+    user-select:none;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:0;
+    padding:2px 4px;
+    transition:transform 0.06s ease, filter 0.06s ease;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .key:active{
+    transform:scale(0.94);
+    filter:brightness(1.12);
+  }
+  .key .lbl{ font-size:17px; line-height:1; }
+  .key.fn .lbl, .key.op .lbl, .key.mem .lbl, .key.util .lbl, .key.equals .lbl{ font-size:14px; }
+
+  .key.num{
+    background:linear-gradient(180deg,var(--key-num-a),var(--key-num-b));
+    color:var(--text-num);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,0.06), 0 2px 3px rgba(0,0,0,0.4);
+  }
+  .key.fn{
+    background:linear-gradient(180deg,var(--key-fn-a),var(--key-fn-b));
+    color:var(--text-fn);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,0.04), 0 2px 3px rgba(0,0,0,0.4);
+  }
+  .key.op{
+    background:linear-gradient(180deg,var(--key-op-a),var(--key-op-b));
+    color:var(--text-op);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,0.04), 0 2px 3px rgba(0,0,0,0.4);
+  }
+  .key.util{
+    background:linear-gradient(180deg,var(--util-a),var(--util-b));
+    color:var(--text-util);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,0.08), 0 2px 3px rgba(0,0,0,0.4);
+  }
+  .key.mem{
+    background:linear-gradient(180deg,var(--key-mem-a),var(--key-mem-b));
+    color:var(--text-mem);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,0.03), 0 1px 2px rgba(0,0,0,0.4);
+  }
+  .key.equals{
+    background:linear-gradient(180deg,var(--brass-a),var(--brass-b));
+    color:#211a0d;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,0.35), 0 3px 6px rgba(0,0,0,0.5);
+    grid-column:span 2;
+  }
+  .key.active{
+    outline:1px solid var(--brass-a);
+    box-shadow:inset 0 2px 5px rgba(0,0,0,0.6) !important;
+  }
+</style>
+</head>
+<body>
+
+  <div class="mv7-body">
+    <div class="rivet tl"></div>
+    <div class="rivet tr"></div>
+    <div class="rivet bl"></div>
+    <div class="rivet br"></div>
+
+    <div class="mv7-header">
+      <div>
+        <div class="brand-title">MERIDIAN</div>
+        <div class="brand-sub">MODEL VII · SCIENTIFIC</div>
+      </div>
+      <div class="header-right">
+        <div class="inv-badge" id="invBadge">INV</div>
+        <div class="angle-switch" id="angleSwitch">
+          <div class="angle-knob" id="angleKnob">DEG</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="display" id="display">
+      <div class="history-line" id="historyLine">&nbsp;</div>
+      <div class="main-line" id="mainLine">0</div>
+      <div class="preview-line" id="previewLine">&nbsp;</div>
+    </div>
+
+    <div class="keypad" id="keypad">
+      <!-- Row 1: memory / util -->
+      <button class="key mem" data-action="MC">MC</button>
+      <button class="key mem" data-action="MR">MR</button>
+      <button class="key mem" data-action="M+">M+</button>
+      <button class="key mem" data-action="M-">M−</button>
+      <button class="key util" data-action="AC">AC</button>
+      <button class="key util" data-action="DEL">⌫</button>
+
+      <!-- Row 2 -->
+      <button class="key fn" id="invKey" data-action="INV">INV</button>
+      <button class="key fn" id="sinKey" data-fn="sin(">sin</button>
+      <button class="key fn" id="cosKey" data-fn="cos(">cos</button>
+      <button class="key fn" id="tanKey" data-fn="tan(">tan</button>
+      <button class="key fn" data-token="^2">x²</button>
+      <button class="key fn" data-token="!">x!</button>
+
+      <!-- Row 3 -->
+      <button class="key fn" data-token="^">xʸ</button>
+      <button class="key fn" data-token="sqrt(">√x</button>
+      <button class="key fn" id="logKey" data-fn="log(">log</button>
+      <button class="key fn" id="lnKey" data-fn="ln(">ln</button>
+      <button class="key fn" data-token="(">(</button>
+      <button class="key fn" data-token=")">)</button>
+
+      <!-- Row 4 -->
+      <button class="key num" data-token="7">7</button>
+      <button class="key num" data-token="8">8</button>
+      <button class="key num" data-token="9">9</button>
+      <button class="key op" data-token="/">÷</button>
+      <button class="key fn" data-token="%">%</button>
+      <button class="key fn" data-token="e">EXP</button>
+
+      <!-- Row 5 -->
+      <button class="key num" data-token="4">4</button>
+      <button class="key num" data-token="5">5</button>
+      <button class="key num" data-token="6">6</button>
+      <button class="key op" data-token="*">×</button>
+      <button class="key fn" data-token="^(-1)">1/x</button>
+      <button class="key fn" data-token="pi">π</button>
+
+      <!-- Row 6 -->
+      <button class="key num" data-token="1">1</button>
+      <button class="key num" data-token="2">2</button>
+      <button class="key num" data-token="3">3</button>
+      <button class="key op" data-token="-">−</button>
+      <button class="key fn" data-token="e">e</button>
+      <button class="key fn" data-token="Ans">Ans</button>
+
+      <!-- Row 7 -->
+      <button class="key num" data-token="0">0</button>
+      <button class="key num" data-token=".">.</button>
+      <button class="key fn" data-action="PM">±</button>
+      <button class="key op" data-token="+">+</button>
+      <button class="key equals" data-action="EQ">=</button>
+    </div>
+  </div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ---------- state ---------- */
+  let expr = "";
+  let mode = "input"; // 'input' | 'result'
+  let angleMode = "DEG";
+  let inv = false;
+  let ans = null;
+  let memory = 0;
+
+  /* ---------- elements ---------- */
+  const mainLine = document.getElementById('mainLine');
+  const historyLine = document.getElementById('historyLine');
+  const previewLine = document.getElementById('previewLine');
+  const displayEl = document.getElementById('display');
+  const invBadge = document.getElementById('invBadge');
+  const angleSwitch = document.getElementById('angleSwitch');
+  const angleKnob = document.getElementById('angleKnob');
+  const sinKey = document.getElementById('sinKey');
+  const cosKey = document.getElementById('cosKey');
+  const tanKey = document.getElementById('tanKey');
+  const logKey = document.getElementById('logKey');
+  const lnKey = document.getElementById('lnKey');
+
+  /* ---------- helpers ---------- */
+  function isOperator(tok){
+    return ["+","-","*","/","^","!","%"].includes(tok);
+  }
+
+  function autoClose(s){
+    const opens = (s.match(/\(/g) || []).length;
+    const closes = (s.match(/\)/g) || []).length;
+    return opens > closes ? s + ")".repeat(opens - closes) : s;
+  }
+
+  function buildScope(mode){
+    const toRad = x => (mode === "DEG" ? x * Math.PI / 180 : x);
+    const toOut = x => (mode === "DEG" ? x * 180 / Math.PI : x);
+    return {
+      sin: x => Math.sin(toRad(x)),
+      cos: x => Math.cos(toRad(x)),
+      tan: x => Math.tan(toRad(x)),
+      asin: x => toOut(Math.asin(x)),
+      acos: x => toOut(Math.acos(x)),
+      atan: x => toOut(Math.atan(x)),
+      log: x => Math.log10(x),
+      ln: x => Math.log(x)
+    };
+  }
+
+  function fmtNumber(n){
+    if (n === null || n === undefined || Number.isNaN(n)) return "Error";
+    if (!isFinite(n)) return n > 0 ? "∞" : "-∞";
+    if (Math.abs(n) !== 0 && (Math.abs(n) > 1e12 || Math.abs(n) < 1e-9)) {
+      const parts = n.toExponential(6).split("e");
+      return parseFloat(parts[0]) + "×10^" + parseInt(parts[1], 10);
+    }
+    const rounded = parseFloat(n.toPrecision(12));
+    return rounded.toString();
+  }
+
+  function prettify(s){
+    return s
+      .replace(/asin\(/g, "sin⁻¹(")
+      .replace(/acos\(/g, "cos⁻¹(")
+      .replace(/atan\(/g, "tan⁻¹(")
+      .replace(/sqrt\(/g, "√(")
+      .replace(/exp\(/g, "eˣ(")
+      .replace(/10\^\(/g, "10ˣ(")
+      .replace(/\^\(-1\)/g, "⁻¹")
+      .replace(/\^2(?![0-9])/g, "²")
+      .replace(/\bpi\b/g, "π")
+      .replace(/\*/g, "×")
+      .replace(/\//g, "÷")
+      .replace(/(?<![\d.])-/g, "−");
+  }
+
+  function computeValue(raw, angleMode, ansVal){
+    if (!raw) return null;
+    try{
+      let s = autoClose(raw);
+      s = s.replace(/%/g, "/100");
+      s = s.replace(/Ans/g, ansVal !== null ? "(" + ansVal + ")" : "0");
+      if (/[+\-*/^.]$/.test(s)) return null;
+      const val = math.evaluate(s, buildScope(angleMode));
+      if (typeof val === "number" && isFinite(val)) return val;
+      return null;
+    }catch(e){
+      return null;
+    }
+  }
+
+  /* ---------- render ---------- */
+  function render(){
+    const preview = mode === "input" ? computeValue(expr, angleMode, ans) : null;
+    mainLine.textContent = mode === "result" ? expr : (prettify(expr) || "0");
+    mainLine.classList.toggle('result', mode === "result");
+    previewLine.textContent = (preview !== null && expr) ? ("= " + fmtNumber(preview)) : "\u00A0";
+    historyLine.textContent = historyLine.dataset.text || (memory !== 0 ? "M" : "\u00A0");
+    mainLine.scrollLeft = mainLine.scrollWidth;
+
+    invBadge.classList.toggle('active', inv);
+    angleKnob.textContent = angleMode;
+    angleKnob.classList.toggle('rad', angleMode === "RAD");
+
+    sinKey.textContent = inv ? "sin⁻¹" : "sin";
+    cosKey.textContent = inv ? "cos⁻¹" : "cos";
+    tanKey.textContent = inv ? "tan⁻¹" : "tan";
+    logKey.textContent = inv ? "10ˣ" : "log";
+    lnKey.textContent = inv ? "eˣ" : "ln";
+  }
+
+  function setHistory(text){
+    historyLine.dataset.text = text;
+  }
+
+  /* ---------- actions ---------- */
+  function pushToken(token){
+    if (mode === "result") {
+      if (isOperator(token)) {
+        expr = fmtNumber(ans === null ? 0 : ans).replace(/×10\^/, "e") + token;
+      } else if (token === ")") {
+        expr = "(" + token;
+      } else {
+        expr = token;
+      }
+      mode = "input";
+      setHistory("");
+    } else {
+      if (expr.length <= 80) expr += token;
+    }
+    render();
+  }
+
+  function handleFn(base){
+    let tok = base;
+    if (inv) {
+      if (base === "sin(") tok = "asin(";
+      else if (base === "cos(") tok = "acos(";
+      else if (base === "tan(") tok = "atan(";
+      else if (base === "log(") tok = "10^(";
+      else if (base === "ln(") tok = "exp(";
+    }
+    pushToken(tok);
+  }
+
+  function handleEquals(){
+    const val = computeValue(expr, angleMode, ans);
+    if (val === null) {
+      displayEl.classList.add('shake');
+      setTimeout(() => displayEl.classList.remove('shake'), 300);
+      return;
+    }
+    setHistory(prettify(autoClose(expr)) + " =");
+    ans = val;
+    expr = fmtNumber(val);
+    mode = "result";
+    render();
+  }
+
+  function handleAC(){
+    expr = "";
+    mode = "input";
+    setHistory("");
+    render();
+  }
+
+  function handleDel(){
+    if (mode === "result") { handleAC(); return; }
+    expr = expr.slice(0, -1);
+    render();
+  }
+
+  function handlePlusMinus(){
+    if (mode === "result") {
+      const v = ans === null ? 0 : -ans;
+      expr = fmtNumber(v);
+      mode = "input";
+    } else if (expr.startsWith("-(") && expr.endsWith(")")) {
+      expr = expr.slice(2, -1);
+    } else {
+      expr = "-(" + expr + ")";
+    }
+    render();
+  }
+
+  function handleMemory(op){
+    const current = mode === "result" ? ans : computeValue(expr, angleMode, ans);
+    const v = current === null ? 0 : current;
+    if (op === "MC") memory = 0;
+    if (op === "MR") pushToken(fmtNumber(memory));
+    if (op === "M+") memory += v;
+    if (op === "M-") memory -= v;
+    render();
+  }
+
+  /* ---------- wiring ---------- */
+  document.getElementById('keypad').addEventListener('click', function(e){
+    const btn = e.target.closest('.key');
+    if (!btn) return;
+
+    const token = btn.dataset.token;
+    const fn = btn.dataset.fn;
+    const action = btn.dataset.action;
+
+    if (token !== undefined) { pushToken(token); return; }
+    if (fn !== undefined) { handleFn(fn); return; }
+
+    switch(action){
+      case 'AC': handleAC(); break;
+      case 'DEL': handleDel(); break;
+      case 'EQ': handleEquals(); break;
+      case 'PM': handlePlusMinus(); break;
+      case 'MC': case 'MR': case 'M+': case 'M-': handleMemory(action); break;
+      case 'INV': inv = !inv; render(); break;
+    }
+  });
+
+  angleSwitch.addEventListener('click', function(){
+    angleMode = angleMode === "DEG" ? "RAD" : "DEG";
+    render();
+  });
+
+  invBadge.addEventListener('click', function(){
+    inv = !inv;
+    render();
+  });
+
+  /* ---------- keyboard support ---------- */
+  window.addEventListener('keydown', function(e){
+    const k = e.key;
+    if (/^[0-9.]$/.test(k)) { pushToken(k); return; }
+    if (k === '+' || k === '-' || k === '*' || k === '/' || k === '^') { pushToken(k); return; }
+    if (k === '(' || k === ')') { pushToken(k); return; }
+    if (k === 'Enter' || k === '=') { e.preventDefault(); handleEquals(); return; }
+    if (k === 'Backspace') { handleDel(); return; }
+    if (k === 'Escape') { handleAC(); return; }
+    if (k === '%') { pushToken('%'); return; }
+  });
+
+  /* ---------- init ---------- */
+  render();
+})();
+</script>
+
+</body>
+</html>
